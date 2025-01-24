@@ -1,66 +1,129 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Version laravel y passport
+"laravel/framework": "^9.19",
+"laravel/passport": "11.0",
+# Configuración para trabajar con load data local infile en MySQL 
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Habilitar de la siguiente forma en el archivo de configuración de MySQL (my.ini o my.cnf)
+local_infile=1
+Deberá estar como en el siguiente fragmento 
 
-## About Laravel
+[mysqld]
+port=3306
+datadir="C:/xampp/mysql/data"
+socket="C:/xampp/mysql/mysql.sock"
+local_infile=1
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+# En a configuracion de database debera esta configurada de la siguiente form 
+'options' => extension_loaded('pdo_mysql') ? array_filter([
+    PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+    PDO::MYSQL_ATTR_LOCAL_INFILE => true, // Habilitar LOCAL INFILE
+]) : [],
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+# Configuración para tabajar con Oauth2
+Se debera ejecutar el siguiente comando para poder generas las claves del cliente para las solicitudes del token Oauth2
+composer requiere laravel/passport:^11.0
+php artisan passport:install
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+# StoreProcedure de disperción de datos
+DELIMITER //
 
-## Learning Laravel
+CREATE PROCEDURE DisperseTemporalPersonData()
+BEGIN
+    DECLARE person_id INT;
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+    -- Insertar personas únicas, evitando nombres vacíos
+    INSERT INTO person (nombre, paterno, materno)
+    SELECT DISTINCT nombre, paterno, materno
+    FROM temporal_person
+    WHERE nombre IS NOT NULL AND nombre != ''
+      AND paterno IS NOT NULL AND paterno != ''
+      AND materno IS NOT NULL AND materno != ''
+      AND NOT EXISTS (
+          SELECT 1
+          FROM person
+          WHERE person.nombre = temporal_person.nombre
+            AND person.paterno = temporal_person.paterno
+            AND person.materno = temporal_person.materno
+      );
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+    -- Insertar teléfonos únicos, evitando valores vacíos
+    INSERT INTO phone (phone, person_id)
+    SELECT DISTINCT t.telefono, p.id
+    FROM temporal_person t
+    INNER JOIN person p
+      ON p.nombre = t.nombre
+      AND p.paterno = t.paterno
+      AND p.materno = t.materno
+    WHERE t.telefono IS NOT NULL AND t.telefono != ''
+      AND NOT EXISTS (
+          SELECT 1
+          FROM phone ph
+          WHERE ph.phone = t.telefono
+            AND ph.person_id = p.id
+      );
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+    -- Insertar direcciones únicas, evitando valores vacíos
+    INSERT INTO address (calle, numero_exterior, numero_interior, colonia, cp, person_id)
+    SELECT DISTINCT t.calle, t.numero_exterior, t.numero_interior, t.colonia, t.cp, p.id
+    FROM temporal_person t
+    INNER JOIN person p
+      ON p.nombre = t.nombre
+      AND p.paterno = t.paterno
+      AND p.materno = t.materno
+    WHERE t.calle IS NOT NULL AND t.calle != ''
+      AND t.colonia IS NOT NULL AND t.colonia != ''
+      AND t.cp IS NOT NULL AND t.cp != ''
+      AND NOT EXISTS (
+          SELECT 1
+          FROM address a
+          WHERE a.calle = t.calle
+            AND a.numero_exterior = t.numero_exterior
+            AND a.numero_interior = t.numero_interior
+            AND a.colonia = t.colonia
+            AND a.cp = t.cp
+            AND a.person_id = p.id
+      );
 
-## Laravel Sponsors
+    -- Limpiar la tabla temporal
+    TRUNCATE TABLE temporal_person;
+END;
+//
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+DELIMITER ;
 
-### Premium Partners
+# StoreProcedure de consulta
+DELIMITER //
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
+CREATE PROCEDURE SP_GetPeople(
+    IN startIndex INT,
+    IN pageSize INT
+)
+BEGIN
+    SELECT 
+        p.id, 
+        p.nombre, 
+        p.paterno, 
+        p.materno
+    FROM person p
+    LIMIT startIndex, pageSize;
 
-## Contributing
+    SELECT 
+        COUNT(*) AS totalRecords
+    FROM person;
+END //
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+DELIMITER ;
 
-## Code of Conduct
+# Creación de tablas de la base de datos
+Se pueden ejecutar las migraciones configuradas en el proyecto, de igual forma se adjunta un dump de la base de datos que se ocupo en pruebas.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+# usuarios 
+En caso de ejecutar las migraciones, no se tendria un usuario creado por default, se creo un endpoint de creación de usuarios 
 
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+enpoint: api/singup
+x-www-form-urlencoded
+name:Carlos Sanchez
+email:csanchez@mikistlilabs.com
+password:123456789
+password_confirmation:123456789
+user_type:1 // el tipo de usuario 1 es para admin quien podra cargar el excel y el usuario 2 solo podra visualizar la informacion de las personas
