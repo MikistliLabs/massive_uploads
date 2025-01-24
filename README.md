@@ -24,7 +24,7 @@ Se debera ejecutar el siguiente comando para poder generas las claves del client
 composer requiere laravel/passport:^11.0
 php artisan passport:install
 
-# StoreProcedure de disperción de datos
+# StoreProcedure de disperción de datos estos se ejecutaran solo si se ejecutan las migraciones, si se decide usar el dump no será necesario
 DELIMITER //
 
 CREATE PROCEDURE DisperseTemporalPersonData()
