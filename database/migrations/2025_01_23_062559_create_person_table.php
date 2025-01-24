@@ -19,6 +19,10 @@ return new class extends Migration
             $table->string('paterno');
             $table->string('materno');
         });
+        // Añadir el índice a la tabla person
+        Schema::table('person', function (Blueprint $table) {
+            $table->index(['nombre', 'paterno', 'materno'], 'idx_person_name');
+        });
     }
 
     /**
@@ -29,5 +33,9 @@ return new class extends Migration
     public function down()
     {
         Schema::dropIfExists('person');
+        // Eliminar el índice de la tabla person
+        Schema::table('person', function (Blueprint $table) {
+            $table->dropIndex('idx_person_name');
+        });
     }
 };

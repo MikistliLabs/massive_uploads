@@ -20,7 +20,12 @@ return new class extends Migration
             $table->string('numero_interior', 10)->nullable();
             $table->string('colonia')->nullable();
             $table->string('cp', 10)->nullable();
-            $table->foreign('user_id')->references('id')->on('users');
+            $table->unsignedInteger('person_id');
+            $table->foreign('person_id')->references('id')->on('person')->onDelete('cascade');
+        });
+        // Añadir el índice a la tabla phone
+        Schema::table('address', function (Blueprint $table) {
+            $table->index(['calle', 'numero_exterior', 'numero_interior', 'colonia', 'cp', 'person_id'], 'idx_address_person');
         });
     }
 
@@ -32,5 +37,9 @@ return new class extends Migration
     public function down()
     {
         Schema::dropIfExists('address');
+        // Eliminar el índice de la tabla person
+        Schema::table('address', function (Blueprint $table) {
+            $table->dropIndex('idx_address_person');
+        });
     }
 };

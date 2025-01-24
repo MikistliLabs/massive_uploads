@@ -9,8 +9,8 @@ use App\Models\User;
 
 class AuthController extends Controller
 {
-    public function login(Request $request)
-    {
+    public function login(Request $request){
+        // dd($request);
         try {
             // Validar las credenciales del usuario
             $request->validate([
@@ -24,7 +24,7 @@ class AuthController extends Controller
             if (!$client) {
                 return response()->json(['message' => 'Error en la configuración de OAuth2'], 500);
             }
-
+            // dd($client);
             // Preparar los datos para la petición del token
             $data = [
                 'grant_type' => 'password',
@@ -37,10 +37,20 @@ class AuthController extends Controller
             // Hacer la petición del token al endpoint de Passport
             $tokenRequest = Request::create('/oauth/token', 'POST', $data);
             $response = app()->handle($tokenRequest);
-
             // Devolver el token o un error
             if ($response->getStatusCode() === 200) {
-                return response()->json(json_decode($response->getContent(), true));
+                // Recuperamos los datos del usuario que acaba de iniciar sesion
+                $user = User::where('email', $request->email)->first();
+                $dataUsr = [
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'user_type' => $user->user_type,
+                ];
+                return response()->json([
+                    'token_data' => json_decode($response->getContent(), true),
+                    'user' => $dataUsr,
+                ], 200);
+                // return response()->json(json_decode($response->getContent(), true));
             }
             return response()->json(['message' => 'Credenciales inválidas'], 401);
         }catch (\Exception $e) {
@@ -57,11 +67,13 @@ class AuthController extends Controller
                 'name' => 'required|string',
                 'email' => 'required|string|email|unique:users',
                 'password' => 'required|string|confirmed',
+                'user_type' => 'required|int',
             ]);
             $user = new User([
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => bcrypt($request->password),
+                'user_type' => $request->user_type,
             ]);
             $user->save();
             return response()->json([
@@ -80,6 +92,14 @@ class AuthController extends Controller
         }
     }
     public function logout(Request $request){
+        // Verificar si el usuario está autenticado
+        $user = auth()->user();
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'Sin sesión'
+            ], 200);
+        }
         $request->user()->token()->revoke();
         return response()->json([
             'message' => 'Sesión termida',

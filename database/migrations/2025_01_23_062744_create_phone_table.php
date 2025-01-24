@@ -16,7 +16,12 @@ return new class extends Migration
         Schema::create('phone', function (Blueprint $table) {
             $table->increments('id');
             $table->string('phone', 10);
-            $table->foreign('user_id')->references('id')->on('users');
+            $table->unsignedInteger('person_id');
+            $table->foreign('person_id')->references('id')->on('person')->onDelete('cascade');
+        });
+        // Añadir el índice a la tabla phone
+        Schema::table('phone', function (Blueprint $table) {
+            $table->index(['phone', 'person_id'], 'idx_phone_person');
         });
     }
 
@@ -28,5 +33,9 @@ return new class extends Migration
     public function down()
     {
         Schema::dropIfExists('phone');
+        // Eliminar el índice de la tabla phone
+        Schema::table('phone', function (Blueprint $table) {
+            $table->dropIndex('idx_phone_person');
+        });
     }
 };
