@@ -127,3 +127,14 @@ email:csanchez@mikistlilabs.com
 password:123456789
 password_confirmation:123456789
 user_type:1 // el tipo de usuario 1 es para admin quien podra cargar el excel y el usuario 2 solo podra visualizar la informacion de las personas
+
+
+
+# usuarios configurados en el dump
+admin
+email: Alberto@example.com
+contraseña: password
+
+usuario de consulta
+email: grillo@mikistlilabs.com
+contraseña: 123456789
